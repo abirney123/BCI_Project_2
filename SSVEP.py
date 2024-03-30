@@ -218,9 +218,9 @@ def find_frequency_indices(fft_frequencies, freq_a, freq_b):
 def generate_prediction(eeg_epochs_fft, fft_idx_freq_a, fft_idx_freq_b,
                         electrode, channels, freq_a, freq_b):
     """
-    A function to predict the frequency that a user was focused on during each 
-    epoch of an SSVEP experiment. The prediction is based on which frequency 
-    (frequency a or frequency b) was associated with a higher amplitude. 
+    A function to predict the stimulus frequency that was shown during each epoch.
+    The prediction is based on which frequency (frequency a or frequency b) was 
+    associated with a higher amplitude. 
     
     Parameters
     ---------
@@ -252,8 +252,7 @@ def generate_prediction(eeg_epochs_fft, fft_idx_freq_a, fft_idx_freq_b,
     -------
     predictions : List of size (E,) where E is the number of epochs in 
     eeg_epochs_fft.
-        The prediction for which frequency a subject was focused on for each 
-        epoch. 
+        The predictions of the stimulus frequency for each epoch.
 
     """
     # get channel index from electrode name
