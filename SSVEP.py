@@ -97,8 +97,8 @@ def epoch_ssvep_data(data_dict, freq_b, epoch_start_time=0, epoch_end_time=20):
     event_types = data_dict['event_types']    # image frequency of during event
     
     # calculate epoch parameters
-    epoch_start_indexes = event_samples + int(np.round(epoch_start_time * fs))
-    epoch_durations = int(np.round((epoch_end_time - epoch_start_time) * fs))
+    epoch_start_indexes = event_samples + int(epoch_start_time * fs)
+    epoch_durations = int((epoch_end_time - epoch_start_time) * fs)
     epoch_times = np.arange(epoch_start_time, epoch_end_time, 1/fs)  #seconds
     epoch_count = len(event_samples)
     
@@ -334,11 +334,11 @@ def calculate_accuracy(is_trial_bHz, predictions, freq_b):
     for prediction in predictions:
         if prediction == freq_b:
             is_prediction_bHz.append(True)
-        elif is_prediction_bHz == None: # for cases where difference in amplitude
+        elif prediction == None: # for cases where difference in amplitude
         # was 0. User would have been notified prior so no additional messaging
         # needed.
             is_prediction_bHz.append(None)
-        elif (is_prediction_bHz != None) & (is_prediction_bHz != freq_b):
+        elif (prediction != None) & (prediction != freq_b):
             is_prediction_bHz.append(False)
     
     # accuracy = number of correct predictions / number of total predictions
@@ -372,7 +372,6 @@ def get_ITR(accuracy, epoch_start_time = 0, epoch_end_time = 20, num_choices = 2
         The information transfer rate in bits per second.
 
     """
-    # assumes that num choices is 2
     
     # get trials per second, epoch start and end times are in seconds
     epoch_duration = epoch_end_time - epoch_start_time
@@ -382,15 +381,13 @@ def get_ITR(accuracy, epoch_start_time = 0, epoch_end_time = 20, num_choices = 2
     # get ITR(trial)
     # ITR(trial) = log2N + P*log2P + (1-P) * log2([1-P]/[N-1])
     # where N is number of trials and P is accuracy
-    # handle cases where accuracy is 0 or 1 to aovid invalid values when taking log
+    # handle cases where accuracy is 0 or 1 to avoid invalid values when taking log
     if accuracy == 0:
-        ITR_trial = np.log2(num_choices) + ((1-accuracy) *
-                                            np.log2((1-accuracy)/(num_choices - 1)))
+        ITR_trial = np.log2(num_choices) + (1-accuracy) * np.log2((1-accuracy)/(num_choices - 1))
     elif accuracy == 1: 
-        ITR_trial = np.log2(num_choices) + (accuracy) * np.log2(accuracy)
+        ITR_trial = np.log2(num_choices) + (accuracy) * np.log2(accuracy) 
     else:
-        ITR_trial = np.log2(num_choices) + (accuracy) * np.log2(accuracy) + ((1-accuracy) *
-                                                                             np.log2((1-accuracy)/(num_choices - 1)))
+        ITR_trial = np.log2(num_choices) + (accuracy) * np.log2(accuracy) + (1-accuracy) * np.log2((1-accuracy)/(num_choices - 1))
     # get ITR(time)
     # ITR(time) = ITR(trial) * (trails/ sec)
     ITR_time = ITR_trial * (trials_per_second)

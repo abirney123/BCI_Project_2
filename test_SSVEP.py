@@ -68,11 +68,10 @@ ITR_time = SSVEP.get_ITR(accuracy)
 
 # set possible epoch start and end times
 # have start range from 0 to 19 so it is within the bounds of the actual stimulus
-# presentation but we won't have an epoch that begins at the last ms of that window
-epoch_start_times = np.arange(0,20,1)
+# use 300ms increments
+epoch_start_times = np.arange(0,20,.5)
 # have end range from 1 to 20 so it is within the bounds of the actual stimulus
-# presentation but we won't have an epoch that ends at the first sms of that window
-epoch_end_times = np.arange(1,21,1)
+epoch_end_times = np.arange(1,21,.5)
 
 # calculate figures of merit
 results = SSVEP.test_epochs(data_dict, epoch_start_times, epoch_end_times,
