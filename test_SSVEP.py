@@ -9,6 +9,7 @@ WRITE TOP LEVEL DESCRIPTION BEFORE SUBMITTING
 """
 # import module
 import SSVEP as SSVEP
+import numpy as np
 #%% Part A: Generate Predictions
 
 # set necessary variables
@@ -26,6 +27,9 @@ electrode = "Oz" # Oz was chosen for this SSVEP experiment because it is located
 
 # subject
 subject = 1
+
+# number of choices in SSVEP experiment
+num_choices = 2
 
 # load data
 # subject 1
@@ -52,3 +56,31 @@ fft_idx_freq_a, fft_idx_freq_b = SSVEP.find_frequency_indices(fft_frequencies,
 predictions = SSVEP.generate_prediction(eeg_epochs_fft, fft_idx_freq_a,
                                            fft_idx_freq_b, electrode,
                                            channels, freq_a, freq_b)
+
+#%% Part B: Calculate Accuracy and ITR
+# get accuracy
+accuracy = SSVEP.calculate_accuracy(is_trial_bHz, predictions, freq_b)
+
+# get ITR in bits per second
+ITR_time = SSVEP.get_ITR(accuracy)
+
+#%% Part C: Loop Through Epoch Limits
+
+# set possible epoch start and end times
+# have start range from 0 to 19 so it is within the bounds of the actual stimulus
+# presentation but we won't have an epoch that begins at the last ms of that window
+epoch_start_times = np.arange(0,20,1)
+# have end range from 1 to 20 so it is within the bounds of the actual stimulus
+# presentation but we won't have an epoch that ends at the first sms of that window
+epoch_end_times = np.arange(1,21,1)
+
+# calculate figures of merit
+accuracies, ITRs = SSVEP.test_epochs(data_dict, epoch_start_times, epoch_end_times,
+                               freq_a, freq_b, subject, electrode, num_choices)
+
+
+
+
+
+
+

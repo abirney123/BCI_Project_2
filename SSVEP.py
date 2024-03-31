@@ -110,7 +110,7 @@ def epoch_ssvep_data(data_dict, freq_b, epoch_start_time=0, epoch_end_time=20):
     is_trial_bHz = np.zeros(epoch_count, dtype=bool)
     
     # convert freq_b to string matching necessary format
-    freq_b = str(freq_b) + " Hz"
+    freq_b = str(freq_b) + "hz"
     
     #populate
     for event_index in range(0, len(event_samples)):
@@ -267,8 +267,9 @@ def generate_prediction(eeg_epochs_fft, fft_idx_freq_a, fft_idx_freq_b,
     if channel_idx is not None:
         # extract amplitudes at the fft indices corresponding to frequency a and 
         # frequency b at the desired electrode by indexing eeg_epochs_fft
-        amplitude_a = eeg_epochs_fft[:, channel_idx, fft_idx_freq_a]
-        amplitude_b = eeg_epochs_fft[:, channel_idx, fft_idx_freq_b]
+        # and taking absolute value
+        amplitude_a = np.abs(eeg_epochs_fft[:, channel_idx, fft_idx_freq_a])
+        amplitude_b = np.abs(eeg_epochs_fft[:, channel_idx, fft_idx_freq_b])
         
         # find which amplitude is higher by calculating difference between average 
         #amplitude a and average amplitude b. If positive, amplitude a is higher on 
@@ -302,3 +303,204 @@ def generate_prediction(eeg_epochs_fft, fft_idx_freq_a, fft_idx_freq_b,
         print("The desired electrode could not be found. Please ensure the electrode "+
               "name was spelled correctly and is contained within the list of channels" +
               "for the SSVEP data.")
+        
+#%% Part B: Calculate Accuracy and ITR
+def calculate_accuracy(is_trial_bHz, predictions, freq_b):
+    """
+    A function to calculate the accuracy of the trial type predictions.
+    
+    Parameters
+    ----------
+    is_trial_bHz : Array of bool. Size (E,) where E is the number of epochs.
+        An indication of whether the light was flashing at frequency b during 
+        each epoch. True if the light was flashing, false otherwise.
+    predictions : List of size (E,) where E is the number of epochs in 
+    eeg_epochs_fft.
+        The predictions of the stimulus frequency for each epoch.
+    freq_b : Int
+        One of the frequencies of the flashing shown in the SSVEP experiment.
+
+    Returns
+    -------
+    accuracy : Float
+        The accuracy of the predictions of trial type. Calculating by dividing 
+        the number of accurate predictions by the total number of predictions.
+
+    """
+
+    # is_trial_bhz has T/F values, predictions has ints. Create variable to 
+    # store predictions as T/F values relative to if bHz for comparison
+    is_prediction_bHz = [] # initialize list to store T/F values
+    for prediction in predictions:
+        if prediction == freq_b:
+            is_prediction_bHz.append(True)
+        elif is_prediction_bHz == None: # for cases where difference in amplitude
+        # was 0. User would have been notified prior so no additional messaging
+        # needed.
+            is_prediction_bHz.append(None)
+        elif (is_prediction_bHz != None) & (is_prediction_bHz != freq_b):
+            is_prediction_bHz.append(False)
+    
+    # accuracy = number of correct predictions / number of total predictions
+    num_correct_predictions = is_prediction_bHz == is_trial_bHz
+    accuracy = num_correct_predictions.sum() / len(predictions)
+    
+    return accuracy
+
+def get_ITR(accuracy, epoch_start_time = 0, epoch_end_time = 20, num_choices = 2):
+    """
+    A function to calculate the ITR of the trial type predictions in bits per 
+    second.
+
+    Parameters
+    ----------
+    accuracy : Float
+        The accuracy of the predictions of trial type.
+    epoch_start_time : Int
+        The time that each epoch begins in seconds, relative to the event 
+        sample. The default is 0.
+    epoch_end_time : Int, optional
+        The time that each epoch ends in seconds, relative to the event sample.
+        The default is 20.
+    num_choices : Int, optional
+        The number of stimuli presented to the subject during the SSVEP experiment.
+        The default is 2.
+
+    Returns
+    -------
+    ITR_time : Float
+        The information transfer rate in bits per second.
+
+    """
+    # assumes that num choices is 2
+    
+    # get trials per second, epoch start and end times are in seconds
+    epoch_duration = epoch_end_time - epoch_start_time
+    trials_per_second = 1/epoch_duration
+    num_choices = 2
+    
+    # get ITR(trial)
+    # ITR(trial) = log2N + P*log2P + (1-P) * log2([1-P]/[N-1])
+    # where N is number of trials and P is accuracy
+    # handle cases where accuracy is 0 or 1 to aovid invalid values when taking log
+    if accuracy == 0:
+        ITR_trial = np.log2(num_choices) + ((1-accuracy) *
+                                            np.log2((1-accuracy)/(num_choices - 1)))
+    elif accuracy == 1: 
+        ITR_trial = np.log2(num_choices) + (accuracy) * np.log2(accuracy)
+    else:
+        ITR_trial = np.log2(num_choices) + (accuracy) * np.log2(accuracy) + ((1-accuracy) *
+                                                                             np.log2((1-accuracy)/(num_choices - 1)))
+    # get ITR(time)
+    # ITR(time) = ITR(trial) * (trails/ sec)
+    ITR_time = ITR_trial * (trials_per_second)
+    return ITR_time
+
+
+#%% Part C: Loop Through Epoch Limits
+"""
+Write a loop that tests a given collection of possible epoch start and end 
+times. For each acceptable start/end-time pair, epoch the data, calculate 
+the FFT, generate predictions, and calculate our figures of merit. Keep track 
+of the figures of merit at each start/end-time pair for further analysis. This 
+code should be flexible enough to handle any set of possible start and end 
+times the user wants. The user should be able to select start and end time 
+sets that are different from each other.
+"""
+
+def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
+                freq_b, subject, electrode, num_choices = 2):
+    """
+    TA function to test various epoch start and end times for SSVEP data. For 
+    each valid combination (a valid combination occurs when the epoch end time
+    is greater than the start time) of the epoch start and end times provided 
+    as an input, this function separates SSVEP data into epochs, calculates FFTs,
+    generates predictions of the stimulus frequency, and evaluates the performance 
+    of these predictions through accuracy and Information Transfer Rate (ITR).
+    
+    Parameters:
+    ----------
+    data_dict : numpy.lib.npyio.NpzFile of size f where f represents the number
+    of arrays within this object. 
+        This object behaves similarly to a dictionary and can be accessed using 
+        keys. Contains raw, unfiltered information about the dataset. Each 
+        array within the dictionary holds information corresponding to a 
+        different field. In our case, f=6 and corresponds to: eeg data in volts 
+        ("EEG"), channels ("channels"), sampling frequency in Hz ("fs"), the 
+        sample when each event occured ("event_samples"), the event durations 
+        ("event_durations"), and the event types ("event_types").
+    epoch_start_times: List of size (s,) where s is the number of start times 
+    to be tested.
+        Start times (in seconds) to test for epoching the data.
+    epoch_start_times: List of size (e,) where e is the number of end times
+    to be tested.
+        End times (in seconds) to test for epoching the data.
+    freq_a : Int
+        One of the frequencies of the flashing shown in the SSVEP experiment.
+    freq_b : Int
+        The other frequency of the flashing shown in the SSVEP experiment.
+    subject : Int
+        The number of the subject for whom data will be loaded.
+    electrode : Str
+        The desired electrode. Predictions will be made for data within the 
+        corresponding channel.
+    num_choices : Int, optional
+        The number of stimuli presented to the subject during the SSVEP experiment.
+        The default is 2.
+    
+    Returns:
+    -------
+    accuracies: List of size (ep,) where ep is the number of epoch windows tested,
+    determined by the combinations of start and end times where the end time is
+    greater than the start time.
+        The accuracy score for each tested epoch window.
+    ITRs: List of size (ep,) where ep is the number of epoch windows tested, 
+    determined by the combinations of start and end times where the end time is
+    greater than the start time.
+        The Information Transfer Rate (bits/sec) corresponding to each tested 
+        epoch window.
+    """
+    # initialize list to store accuracy
+    accuracies = []
+    # initialize list to store ITR (bits/sec)
+    ITRs = []
+    
+    # loop through start and end times
+    for start_time in epoch_start_times:
+        for end_time in epoch_end_times:
+            # don't evaluate cases where start time > end time
+            if end_time > start_time:
+                # epoch data
+                eeg_epochs, epoch_times, is_trial_bHz = epoch_ssvep_data(data_dict,
+                                                                         freq_b,
+                                                                         epoch_start_time=start_time,
+                                                                         epoch_end_time=end_time)
+                # calculate FFT
+                fs = data_dict["fs"] # get fs to use as input for getting frequency spectrum
+                eeg_epochs_fft, fft_frequencies = get_frequency_spectrum(eeg_epochs, fs)
+                
+                # get frequency indices for prediction generation
+                fft_idx_freq_a, fft_idx_freq_b = find_frequency_indices(fft_frequencies,
+                                                                        freq_a, freq_b)
+                # generate predictions
+                channels = data_dict["channels"] # get channels to use as input for predictions
+                predictions = generate_prediction(eeg_epochs_fft, fft_idx_freq_a,
+                                                  fft_idx_freq_b, electrode,
+                                                  channels, freq_a, freq_b)
+                # calculate accuracy
+                accuracy = calculate_accuracy(is_trial_bHz, predictions, freq_b)
+                
+                # save accuracy to list of accuracies
+                accuracies.append(accuracy)
+                
+                # calculate ITR
+                ITR = get_ITR(accuracy, epoch_start_time = start_time,
+                              epoch_end_time = end_time, num_choices = num_choices)
+                
+                # save ITR to list of ITRs
+                ITRs.append(ITR)
+                
+    return accuracies, ITRs
+                
+                
+
