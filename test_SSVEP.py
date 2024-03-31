@@ -75,7 +75,7 @@ epoch_start_times = np.arange(0,20,1)
 epoch_end_times = np.arange(1,21,1)
 
 # calculate figures of merit
-accuracies, ITRs = SSVEP.test_epochs(data_dict, epoch_start_times, epoch_end_times,
+results = SSVEP.test_epochs(data_dict, epoch_start_times, epoch_end_times,
                                freq_a, freq_b, subject, electrode, num_choices)
 
 

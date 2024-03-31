@@ -450,20 +450,16 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
     
     Returns:
     -------
-    accuracies: List of size (ep,) where ep is the number of epoch windows tested,
-    determined by the combinations of start and end times where the end time is
+    results : List of size (ep,) where ep is the number of epoch windows test,
+    determined by the combinations of start and end times where the end time is 
     greater than the start time.
-        The accuracy score for each tested epoch window.
-    ITRs: List of size (ep,) where ep is the number of epoch windows tested, 
-    determined by the combinations of start and end times where the end time is
-    greater than the start time.
-        The Information Transfer Rate (bits/sec) corresponding to each tested 
-        epoch window.
+        Each entry in this list is a dictionary of size 4. Each dictionary contains
+        the start time for the epoch window, the end time for the epoch window,
+        the accuracy for the predictions made for the epoch window, and the ITR
+        (in bits per second) for the predictions made for the epoch window.
     """
-    # initialize list to store accuracy
-    accuracies = []
-    # initialize list to store ITR (bits/sec)
-    ITRs = []
+    # initialize list to store results
+    results = []
     
     # loop through start and end times
     for start_time in epoch_start_times:
@@ -490,17 +486,21 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
                 # calculate accuracy
                 accuracy = calculate_accuracy(is_trial_bHz, predictions, freq_b)
                 
-                # save accuracy to list of accuracies
-                accuracies.append(accuracy)
                 
                 # calculate ITR
                 ITR = get_ITR(accuracy, epoch_start_time = start_time,
                               epoch_end_time = end_time, num_choices = num_choices)
                 
-                # save ITR to list of ITRs
-                ITRs.append(ITR)
+                # save info to dictionary
+                result = {"start" : start_time,
+                          "end" : end_time,
+                          "accuracy" : accuracy,
+                          "ITR" : ITR}
                 
-    return accuracies, ITRs
+                # append dictionary to list of results
+                results.append(result)
+                
+    return results
                 
                 
 
