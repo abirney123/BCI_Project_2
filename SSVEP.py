@@ -426,7 +426,7 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
     epoch_start_times: List of size (s,) where s is the number of start times 
     to be tested.
         Start times (in seconds) to test for epoching the data.
-    epoch_start_times: List of size (e,) where e is the number of end times
+    epoch_end_times: List of size (e,) where e is the number of end times
     to be tested.
         End times (in seconds) to test for epoching the data.
     freq_a : Int
@@ -504,16 +504,38 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
     return results
                 
 #%% Part D: Plot Results
-"""
-Finally, generate the pseudocolor plots seen at the beginning of this lab 
-to evaluate the accuracies and ITRs at various epoch limits. Be sure to use 
-good plotting practices, including colorbars, labels, and titles. Again, this 
-code should be flexible enough to handle any set of possible start and end 
-times the user wants. Be sure to run your code for both SSVEP subjects so you 
-can compare the results.
-"""
-
 def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subject):
+    """
+    A function to generate and save pseudocolor plots to evaluate the accuracies 
+    and ITRs at various epoch limits.
+
+    Parameters
+    ----------
+    results : results : Dict of size N where N represents the number of valid combinations
+    of start and end times within epoch_start_times and epoch_end_times.
+        The results of the testing. The keys are tuples representing 
+        the epoch window defined by the start and end times. Each value in the 
+        dictionary is another dictionary with the following keys:
+        - "accuracy": The accuracy of the predictions made for the epoch window.
+        - "ITR": The Information Transfer Rate (ITR) in bits per second for the 
+        predictions made for the epoch window.
+    epoch_start_times: List of size (s,) where s is the number of start times 
+    to be tested.
+        Start times (in seconds) to test for epoching the data.
+    epoch_end_times: List of size (e,) where e is the number of end times
+    to be tested.
+        End times (in seconds) to test for epoching the data.
+    subject : Int
+        The number of the subject for whom data will be plotted. This is only
+        used for plot labels, but must match the subject number fed to other
+        functions for loading and epoching data to ensure the plot title is
+        accurate.
+
+    Returns
+    -------
+    None.
+
+    """
     
     # initialize list to store all accuracies
     accuracies = np.zeros((len(epoch_start_times), len(epoch_end_times)))
