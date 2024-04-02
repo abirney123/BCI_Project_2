@@ -56,7 +56,8 @@ def epoch_ssvep_data(data_dict, freq_b, epoch_start_time=0, epoch_end_time=20):
     Bryant for lab 3 and modified to be more flexible in terms of what frequency
     can be detected to produce an array indicating whether or not each epoch 
     corresponded to that frequency. This modification included the addition of
-    the input parameter "freq_b".
+    the input parameter "freq_b". The function was also modified to be able to 
+    handle epoch start and end times that are not whole numbers.
 
     Parameters
     ----------
@@ -92,9 +93,10 @@ def epoch_ssvep_data(data_dict, freq_b, epoch_start_time=0, epoch_end_time=20):
         each epoch. True if the light was flashing, false otherwise.
 
     '''
-    # convert to into in the case where the given start and end times are decimals
-    epoch_start_time = int(epoch_start_time) # math.floor(epoch_start_time*10)/10
-    epoch_end_time = int(epoch_end_time) #math.floor(epoch_end_time*10)/10
+    
+    #epoch_start_time = int(epoch_start_time) # math.floor(epoch_start_time*10)/10
+    #epoch_end_time = int(epoch_end_time) #math.floor(epoch_end_time*10)/10
+    
 
     #unpack data_dict
     eeg_data = data_dict['eeg']/1e-6   # convert to microvolts
@@ -103,29 +105,29 @@ def epoch_ssvep_data(data_dict, freq_b, epoch_start_time=0, epoch_end_time=20):
     event_types = data_dict['event_types']    # image frequency of during event
     
     # calculate epoch parameters
-    epoch_start_indexes = event_samples + int(epoch_start_time * fs)
-    epoch_durations = int((epoch_end_time - epoch_start_time) * fs)
+    epoch_start_indexes = (event_samples + np.round(epoch_start_time * fs)).astype(int)
+    epoch_end_indexes = (event_samples + np.round(epoch_end_time * fs)).astype(int)
+    epoch_durations = int((epoch_end_time - epoch_start_time) * fs) # duration in samples
     epoch_times = np.arange(epoch_start_time, epoch_end_time, 1/fs)  #seconds
     epoch_count = len(event_samples)
     
     #initaialize variables to store epochs and indication of whether b Hz trial
-    eeg_epochs = np.zeros( ( epoch_count, 
-                             eeg_data.shape[0], 
-                             len(epoch_times) )
-                         ) 
+    eeg_epochs = np.zeros((epoch_count,
+                           eeg_data.shape[0],
+                           epoch_durations )) 
     is_trial_bHz = np.zeros(epoch_count, dtype=bool)
     
     # convert freq_b to string matching necessary format
     freq_b = str(freq_b) + "hz"
     
     #populate
-    for event_index in range(0, len(event_samples)):
+    for event_index in range(epoch_count):
         start_eeg_index = epoch_start_indexes[event_index]
-        stop_eeg_index = start_eeg_index + epoch_durations
-        eeg_epochs[event_index,:,:]  \
+        stop_eeg_index = epoch_end_indexes[event_index]
+        eeg_epochs[event_index,:,:stop_eeg_index-start_eeg_index]  \
                 = eeg_data[:,start_eeg_index:stop_eeg_index]
         is_trial_bHz[event_index] =   event_types[event_index] == freq_b
-        
+    
     return eeg_epochs, epoch_times, is_trial_bHz
 
 # take Fast Fourier Transform (FFT) of each epoch to examine frequency content
@@ -410,7 +412,6 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
     as an input, this function separates SSVEP data into epochs, calculates FFTs,
     generates predictions of the stimulus frequency, and evaluates the performance 
     of these predictions through accuracy and Information Transfer Rate (ITR). 
-    Skips the epoch_start_time and epoch_end_time if either one is not a whole numbers.
     
     Parameters:
     ----------
@@ -463,8 +464,8 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
             if end_time > start_time:
 
                 # skip if not whole number
-                if (start_time % 1 != 0 or end_time % 1 != 0):
-                    continue
+                #if (start_time % 1 != 0 or end_time % 1 != 0):
+                    #continue
 
                 # epoch data
                 eeg_epochs, epoch_times, is_trial_bHz = epoch_ssvep_data(data_dict,
@@ -536,24 +537,30 @@ def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subj
     None.
 
     """
-    
+    # get accuracy and ITR for each epoch
     # initialize list to store all accuracies
     accuracies = np.zeros((len(epoch_start_times), len(epoch_end_times)))
-    # loop through keys, get accuracy for each start, end pair
+    # initialize list to store all ITRs
+    ITRs = np.zeros((len(epoch_start_times), len(epoch_end_times)))
+    
+    # loop through keys, get accuracy and ITR for each start, end pair
     for start_idx, start_time in enumerate(epoch_start_times):
         for end_idx, end_time in enumerate(epoch_end_times):
             key = (start_time, end_time)
             if key in results:
                 accuracies[start_idx, end_idx] = results[key]["accuracy"]
+                ITRs[start_idx, end_idx] = results[key]["ITR"]
+    # convert accuracies to percentages
+    accuracies = accuracies * 100
     
     # pseudocolor plot for accuracy - color is accuracy, x is end time, y is start time   
     plt.figure()
     plt.pcolor(epoch_start_times, epoch_end_times, accuracies)
-    plt.colorbar()
-    plt.xlabel("Epoch Start Time (s)")
-    plt.ylabel("Epoch End Time (s)")
-    plt.xticks(ticks=range(0,len(epoch_start_times),5))
-    plt.yticks(ticks=range(0,len(epoch_end_times),5))
+    plt.colorbar(label="% correct")
+    plt.ylabel("Epoch Start Time (s)")
+    plt.xlabel("Epoch End Time (s)")
+    plt.xticks(ticks=np.arange(0,max(epoch_end_times)+1,5))
+    plt.yticks(ticks=np.arange(0,max(epoch_start_times)+1,5))
     plt.title("Accuracy")
     plt.tight_layout()
     plt.show()
@@ -561,25 +568,16 @@ def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subj
     filename = f"Accuracy_pseudocolor_s{subject}.png"
     plt.savefig(filename)
     
-    # plot pseudocolor plot for ITR
-    # initialize list to store all ITRs
-    ITRs = np.zeros((len(epoch_start_times), len(epoch_end_times)))
-    # loop through keys, get accuracy for each start, end pair
-    for start_idx, start_time in enumerate(epoch_start_times):
-        for end_idx, end_time in enumerate(epoch_end_times):
-            key = (start_time, end_time)
-            if key in results:
-                ITRs[start_idx, end_idx] = results[key]["ITR"]
-    
+
     # pseudocolor plot for ITR - color is ITR, x is end time, y is start time   
     plt.figure()
     plt.pcolor(epoch_start_times, epoch_end_times, ITRs)
-    plt.colorbar()
-    plt.xlabel("Epoch Start Time (s)")
-    plt.ylabel("Epoch End Time (s)")
-    plt.xticks(ticks=range(0,len(epoch_start_times),5))
-    plt.yticks(ticks=range(0,len(epoch_end_times),5))
-    plt.title("Information Transfer Rate (bits/second)")
+    plt.colorbar(label="ITR (bits/sec")
+    plt.ylabel("Epoch Start Time (s)")
+    plt.xlabel("Epoch End Time (s)")
+    plt.xticks(ticks=np.arange(0,max(epoch_end_times)+1,5))
+    plt.yticks(ticks=np.arange(0,max(epoch_start_times)+1,5))
+    plt.title("Information Transfer Rate")
     plt.tight_layout()
     plt.show()
     # save
