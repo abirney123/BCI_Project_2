@@ -9,6 +9,7 @@ WRITE TOP LEVEL DESCRIPTION BEFORE SUBMITTING
 """
 # import necessary libraries
 import numpy as np
+import math
 
 #%% Part A: Generate Predictions
 # load data
@@ -90,6 +91,10 @@ def epoch_ssvep_data(data_dict, freq_b, epoch_start_time=0, epoch_end_time=20):
         each epoch. True if the light was flashing, false otherwise.
 
     '''
+    # convert to into in the case where the given start and end times are decimals
+    epoch_start_time = int(epoch_start_time) # math.floor(epoch_start_time*10)/10
+    epoch_end_time = int(epoch_end_time) #math.floor(epoch_end_time*10)/10
+
     #unpack data_dict
     eeg_data = data_dict['eeg']/1e-6   # convert to microvolts
     fs = data_dict['fs']                # sampling frequency
@@ -413,7 +418,8 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
     is greater than the start time) of the epoch start and end times provided 
     as an input, this function separates SSVEP data into epochs, calculates FFTs,
     generates predictions of the stimulus frequency, and evaluates the performance 
-    of these predictions through accuracy and Information Transfer Rate (ITR).
+    of these predictions through accuracy and Information Transfer Rate (ITR). 
+    Skips the epoch_start_time and epoch_end_time if either one is not a whole numbers.
     
     Parameters:
     ----------
@@ -463,6 +469,11 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
         for end_time in epoch_end_times:
             # don't evaluate cases where start time > end time
             if end_time > start_time:
+
+                # skip if not whole number
+                if (start_time % 1 != 0 or end_time % 1 != 0):
+                    continue
+
                 # epoch data
                 eeg_epochs, epoch_times, is_trial_bHz = epoch_ssvep_data(data_dict,
                                                                          freq_b,
@@ -470,6 +481,11 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
                                                                          epoch_end_time=end_time)
                 # calculate FFT
                 fs = data_dict["fs"] # get fs to use as input for getting frequency spectrum
+    
+                # Skip due to time interval being too small
+                if (eeg_epochs.size == 0):
+                    continue
+
                 eeg_epochs_fft, fft_frequencies = get_frequency_spectrum(eeg_epochs, fs)
                 
                 # get frequency indices for prediction generation
