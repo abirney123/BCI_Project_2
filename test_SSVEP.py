@@ -26,7 +26,7 @@ electrode = "Oz" # Oz was chosen for this SSVEP experiment because it is located
 # over the occipital lobe 
 
 # subject
-subject = 1
+subject = 2
 
 # number of choices in SSVEP experiment
 num_choices = 2
@@ -68,7 +68,6 @@ ITR_time = SSVEP.get_ITR(accuracy)
 
 # set possible epoch start and end times
 # have start range from 0 to 19 so it is within the bounds of the actual stimulus
-# use 500ms increments
 epoch_start_times = np.arange(0,20,1)
 # have end range from 1 to 20 so it is within the bounds of the actual stimulus
 epoch_end_times = np.arange(1,21,1)
@@ -78,7 +77,7 @@ results = SSVEP.test_epochs(data_dict, epoch_start_times, epoch_end_times,
                                freq_a, freq_b, subject, electrode, num_choices)
 
 #%% Part D: Plot Results
-SSVEP.generate_pseudocolor_plot(results, epoch_start_times, epoch_end_times,
+SSVEP.generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times,
                                 subject)
 
 

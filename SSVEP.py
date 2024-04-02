@@ -108,7 +108,7 @@ def epoch_ssvep_data(data_dict, freq_b, epoch_start_time=0, epoch_end_time=20):
     epoch_times = np.arange(epoch_start_time, epoch_end_time, 1/fs)  #seconds
     epoch_count = len(event_samples)
     
-    #initaialize variables to store epochs and indication of whether 15 Hz trial
+    #initaialize variables to store epochs and indication of whether b Hz trial
     eeg_epochs = np.zeros( ( epoch_count, 
                              eeg_data.shape[0], 
                              len(epoch_times) )
@@ -401,20 +401,10 @@ def get_ITR(accuracy, epoch_start_time = 0, epoch_end_time = 20, num_choices = 2
 
 
 #%% Part C: Loop Through Epoch Limits
-"""
-Write a loop that tests a given collection of possible epoch start and end 
-times. For each acceptable start/end-time pair, epoch the data, calculate 
-the FFT, generate predictions, and calculate our figures of merit. Keep track 
-of the figures of merit at each start/end-time pair for further analysis. This 
-code should be flexible enough to handle any set of possible start and end 
-times the user wants. The user should be able to select start and end time 
-sets that are different from each other.
-"""
-
 def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
                 freq_b, subject, electrode, num_choices = 2):
     """
-    TA function to test various epoch start and end times for SSVEP data. For 
+    A function to test various epoch start and end times for SSVEP data. For 
     each valid combination (a valid combination occurs when the epoch end time
     is greater than the start time) of the epoch start and end times provided 
     as an input, this function separates SSVEP data into epochs, calculates FFTs,
@@ -454,13 +444,14 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
     
     Returns:
     -------
-    results : List of size (ep,) where ep is the number of epoch windows test,
-    determined by the combinations of start and end times where the end time is 
-    greater than the start time.
-        Each entry in this list is a dictionary of size 4. Each dictionary contains
-        the start time for the epoch window, the end time for the epoch window,
-        the accuracy for the predictions made for the epoch window, and the ITR
-        (in bits per second) for the predictions made for the epoch window.
+    results : Dict of size N where N represents the number of valid combinations
+    of start and end times within epoch_start_times and epoch_end_times.
+        The results of the testing. The keys are tuples representing 
+        the epoch window defined by the start and end times. Each value in the 
+        dictionary is another dictionary with the following keys:
+        - "accuracy": The accuracy of the predictions made for the epoch window.
+        - "ITR": The Information Transfer Rate (ITR) in bits per second for the 
+        predictions made for the epoch window.
     """
     # initialize list to store results
     results = {}
@@ -522,11 +513,10 @@ times the user wants. Be sure to run your code for both SSVEP subjects so you
 can compare the results.
 """
 
-def generate_pseudocolor_plot(results, epoch_start_times, epoch_end_times, subject):
+def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subject):
     
     # initialize list to store all accuracies
     accuracies = np.zeros((len(epoch_start_times), len(epoch_end_times)))
-    print(accuracies.shape)
     # loop through keys, get accuracy for each start, end pair
     for start_idx, start_time in enumerate(epoch_start_times):
         for end_idx, end_time in enumerate(epoch_end_times):
@@ -540,8 +530,8 @@ def generate_pseudocolor_plot(results, epoch_start_times, epoch_end_times, subje
     plt.colorbar()
     plt.xlabel("Epoch Start Time (s)")
     plt.ylabel("Epoch End Time (s)")
-    plt.xticks(ticks=range(len(epoch_start_times)))
-    plt.yticks(ticks=range(len(epoch_end_times)))
+    plt.xticks(ticks=range(0,len(epoch_start_times),5))
+    plt.yticks(ticks=range(0,len(epoch_end_times),5))
     plt.title("Accuracy")
     plt.tight_layout()
     plt.show()
@@ -550,4 +540,27 @@ def generate_pseudocolor_plot(results, epoch_start_times, epoch_end_times, subje
     plt.savefig(filename)
     
     # plot pseudocolor plot for ITR
+    # initialize list to store all ITRs
+    ITRs = np.zeros((len(epoch_start_times), len(epoch_end_times)))
+    # loop through keys, get accuracy for each start, end pair
+    for start_idx, start_time in enumerate(epoch_start_times):
+        for end_idx, end_time in enumerate(epoch_end_times):
+            key = (start_time, end_time)
+            if key in results:
+                ITRs[start_idx, end_idx] = results[key]["ITR"]
+    
+    # pseudocolor plot for accuracy - color is accuracy, x is end time, y is start time   
+    plt.figure()
+    plt.pcolor(epoch_start_times, epoch_end_times, ITRs)
+    plt.colorbar()
+    plt.xlabel("Epoch Start Time (s)")
+    plt.ylabel("Epoch End Time (s)")
+    plt.xticks(ticks=range(0,len(epoch_start_times),5))
+    plt.yticks(ticks=range(0,len(epoch_end_times),5))
+    plt.title("Information Transfer Rate (bits/second)")
+    plt.tight_layout()
+    plt.show()
+    # save
+    filename = f"ITR_pseudocolor_s{subject}.png"
+    plt.savefig(filename)
 
