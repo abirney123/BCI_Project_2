@@ -549,7 +549,7 @@ def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subj
             if key in results:
                 ITRs[start_idx, end_idx] = results[key]["ITR"]
     
-    # pseudocolor plot for accuracy - color is accuracy, x is end time, y is start time   
+    # pseudocolor plot for ITR - color is ITR, x is end time, y is start time   
     plt.figure()
     plt.pcolor(epoch_start_times, epoch_end_times, ITRs)
     plt.colorbar()
