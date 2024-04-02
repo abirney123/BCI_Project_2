@@ -10,6 +10,7 @@ WRITE TOP LEVEL DESCRIPTION BEFORE SUBMITTING
 # import necessary libraries
 import numpy as np
 import math
+from matplotlib import pyplot as plt
 
 #%% Part A: Generate Predictions
 # load data
@@ -462,7 +463,7 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
         (in bits per second) for the predictions made for the epoch window.
     """
     # initialize list to store results
-    results = []
+    results = {}
     
     # loop through start and end times
     for start_time in epoch_start_times:
@@ -505,15 +506,48 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
                               epoch_end_time = end_time, num_choices = num_choices)
                 
                 # save info to dictionary
-                result = {"start" : start_time,
-                          "end" : end_time,
-                          "accuracy" : accuracy,
-                          "ITR" : ITR}
+                results[(start_time, end_time)] = {"accuracy" : accuracy,
+                                                   "ITR" : ITR}
                 
-                # append dictionary to list of results
-                results.append(result)
                 
     return results
                 
-                
+#%% Part D: Plot Results
+"""
+Finally, generate the pseudocolor plots seen at the beginning of this lab 
+to evaluate the accuracies and ITRs at various epoch limits. Be sure to use 
+good plotting practices, including colorbars, labels, and titles. Again, this 
+code should be flexible enough to handle any set of possible start and end 
+times the user wants. Be sure to run your code for both SSVEP subjects so you 
+can compare the results.
+"""
+
+def generate_pseudocolor_plot(results, epoch_start_times, epoch_end_times, subject):
+    
+    # initialize list to store all accuracies
+    accuracies = np.zeros((len(epoch_start_times), len(epoch_end_times)))
+    print(accuracies.shape)
+    # loop through keys, get accuracy for each start, end pair
+    for start_idx, start_time in enumerate(epoch_start_times):
+        for end_idx, end_time in enumerate(epoch_end_times):
+            key = (start_time, end_time)
+            if key in results:
+                accuracies[start_idx, end_idx] = results[key]["accuracy"]
+    
+    # pseudocolor plot for accuracy - color is accuracy, x is end time, y is start time   
+    plt.figure()
+    plt.pcolor(epoch_start_times, epoch_end_times, accuracies)
+    plt.colorbar()
+    plt.xlabel("Epoch Start Time (s)")
+    plt.ylabel("Epoch End Time (s)")
+    plt.xticks(ticks=range(len(epoch_start_times)))
+    plt.yticks(ticks=range(len(epoch_end_times)))
+    plt.title("Accuracy")
+    plt.tight_layout()
+    plt.show()
+    # save
+    filename = f"Accuracy_pseudocolor_s{subject}.png"
+    plt.savefig(filename)
+    
+    # plot pseudocolor plot for ITR
 
