@@ -6,6 +6,7 @@ Created on Sat Mar 30 13:57:35 2024
 @author: Alaina Birney
 
 WRITE TOP LEVEL DESCRIPTION BEFORE SUBMITTING
+ONLY WORKS FOR A SSVEP BCI WITH 2 CHOICES
 """
 # import necessary libraries
 import numpy as np
@@ -49,14 +50,14 @@ def load_ssvep_data(subject, relative_data_path='./SsvepData/'):
 # extract epochs with custom start and end times
 def epoch_ssvep_data(data_dict, freq_b, epoch_start_time=0, epoch_end_time=20):
     '''
-    A function to extract epochs around each event and produce a variable to 
-    represent the time of each sample in each epoch, relative to the event 
-    onset. Epochs begin when event samples start and end 20 seconds later by
-    default. Please note that this function was originally written with Ron 
-    Bryant for lab 3 and modified to be more flexible in terms of what frequency
-    can be detected to produce an array indicating whether or not each epoch 
-    corresponded to that frequency. This modification included the addition of
-    the input parameter "freq_b". The function was also modified to be able to 
+    A function to extract epochs aand produce a variable to represent the time 
+    of each sample in each epoch, relative to the event onset. Epochs begin 
+    when event samples start and end 20 seconds later by default. Please note 
+    that this function was originally written with Ron Bryant for lab 3 and 
+    modified to be more flexible in terms of what frequency can be detected 
+    to produce an array indicating whether or not each epoch corresponded to 
+    that frequency. This modification included the addition of the input 
+    parameter "freq_b". The function was also modified to be able to 
     handle epoch start and end times that are not whole numbers.
 
     Parameters
@@ -134,12 +135,9 @@ def epoch_ssvep_data(data_dict, freq_b, epoch_start_time=0, epoch_end_time=20):
 def get_frequency_spectrum(eeg_epochs, fs):
     '''
     A function to calculate the Fourier transform on each channel in each epoch.
-    An optional parameter, remove_DC has been added to allow users to indicate 
-    whether they would like to remove the DC offset from EEG signal. This can 
-    be useful because as the DC offset is anmartifacts and may be large which 
-    will unnecessarily decrease the normalized power of the signal. Setting 
-    this variable to False retains the DC offset. Please note that this function 
-    was originally written with Ron Bryant for lab 3.
+    Please note that this function was originally written with Ron Bryant for 
+    lab 3, but was modified for this project so that it no longer includes an 
+    option to remove the DC offset. This modification was made for simplicity.
     
     Parameters
     ----------
@@ -148,9 +146,6 @@ def get_frequency_spectrum(eeg_epochs, fs):
         EEG data in uV.
     fs : Int, required.
         The sampling frequency in Hz.
-    remove_DC: Bool, optional.
-        An indication of whether or not to remove the DC offset. The default is 
-        False.
 
     Returns
     -------
@@ -183,7 +178,7 @@ def get_frequency_spectrum(eeg_epochs, fs):
 def find_frequency_indices(fft_frequencies, freq_a, freq_b):
     """
     A function to find the indices of the of the FFT eeg data that align with 
-    frequencies shown in each epoch. If no matching frequencies are found within
+    frequencies shown in each event. If no matching frequencies are found within
     the FFT data, the indices corresponding to the closest frequencies will be 
     chosen.
     
@@ -226,9 +221,9 @@ def find_frequency_indices(fft_frequencies, freq_a, freq_b):
 def generate_prediction(eeg_epochs_fft, fft_idx_freq_a, fft_idx_freq_b,
                         electrode, channels, freq_a, freq_b):
     """
-    A function to predict the stimulus frequency that was shown during each epoch.
-    The prediction is based on which frequency (frequency a or frequency b) was 
-    associated with a higher amplitude. 
+    A function to predict the stimulus frequency that the subject was focused on
+    during each epoch. The prediction is based on which frequency (frequency a 
+    or frequency b) was associated with a higher amplitude. 
     
     Parameters
     ---------
@@ -315,7 +310,7 @@ def generate_prediction(eeg_epochs_fft, fft_idx_freq_a, fft_idx_freq_b,
 #%% Part B: Calculate Accuracy and ITR
 def calculate_accuracy(is_trial_bHz, predictions, freq_b):
     """
-    A function to calculate the accuracy of the trial type predictions.
+    A function to calculate the accuracy of the predictions.
     
     Parameters
     ----------
@@ -357,8 +352,7 @@ def calculate_accuracy(is_trial_bHz, predictions, freq_b):
 
 def get_ITR(accuracy, epoch_start_time = 0, epoch_end_time = 20, num_choices = 2):
     """
-    A function to calculate the ITR of the trial type predictions in bits per 
-    second.
+    A function to calculate the ITR of the predictions in bits per second.
 
     Parameters
     ----------
@@ -409,7 +403,7 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
     A function to test various epoch start and end times for SSVEP data. For 
     each valid combination (a valid combination occurs when the epoch end time
     is greater than the start time) of the epoch start and end times provided 
-    as an input, this function separates SSVEP data into epochs, calculates FFTs,
+    as an input, this function separates EEG data into epochs, calculates FFTs,
     generates predictions of the stimulus frequency, and evaluates the performance 
     of these predictions through accuracy and Information Transfer Rate (ITR). 
     
