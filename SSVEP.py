@@ -337,7 +337,7 @@ def calculate_accuracy(is_trial_bHz, predictions, freq_b):
     """
 
 
-    # is_trial_bhz has T/F values, predictions has ints. Create variable to 
+    # is_trial_bhz has T/F values, predictions has ints. Create variable to
     # store predictions as T/F values relative to if bHz for comparison
     is_prediction_bHz = []  # initialize list to store T/F values
     for prediction in predictions:
@@ -543,6 +543,7 @@ def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subj
             if key in results:
                 accuracies[start_idx, end_idx] = results[key]["accuracy"]
                 ITRs[start_idx, end_idx] = results[key]["ITR"]
+
     # convert accuracies to percentages
     accuracies = accuracies * 100
 
@@ -552,8 +553,8 @@ def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subj
     plt.colorbar(label="% correct")
     plt.ylabel("Epoch Start Time (s)")
     plt.xlabel("Epoch End Time (s)")
-    plt.xticks(ticks=np.arange(0, max(epoch_end_times) + 1, 5))
-    plt.yticks(ticks=np.arange(0, max(epoch_start_times) + 1, 2.5))
+    plt.xticks(ticks=np.arange(0, max(epoch_end_times)+1,5))
+    plt.yticks(ticks=np.arange(0, max(epoch_start_times)+1,2.5))
     plt.title("Accuracy")
     plt.tight_layout()
     plt.show()
