@@ -533,6 +533,7 @@ def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subj
     """
     # get accuracy and ITR for each epoch
     # initialize list to store all accuracies
+    
     accuracies = np.zeros((len(epoch_start_times), len(epoch_end_times)))
     # initialize list to store all ITRs
     ITRs = np.zeros((len(epoch_start_times), len(epoch_end_times)))
@@ -544,17 +545,18 @@ def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subj
             if key in results:
                 accuracies[start_idx, end_idx] = results[key]["accuracy"]
                 ITRs[start_idx, end_idx] = results[key]["ITR"]
+                
     # convert accuracies to percentages
     accuracies = accuracies * 100
     
     # pseudocolor plot for accuracy - color is accuracy, x is end time, y is start time   
     plt.figure()
-    plt.pcolor(epoch_start_times, epoch_end_times, accuracies)
+    plt.pcolor(epoch_end_times, epoch_start_times, accuracies)
     plt.colorbar(label="% correct")
     plt.ylabel("Epoch Start Time (s)")
     plt.xlabel("Epoch End Time (s)")
     plt.xticks(ticks=np.arange(0,max(epoch_end_times)+1,5))
-    plt.yticks(ticks=np.arange(0,max(epoch_start_times)+1,5))
+    plt.yticks(ticks=np.arange(0,max(epoch_start_times)+1,2.5))
     plt.title("Accuracy")
     plt.tight_layout()
     plt.show()
@@ -565,11 +567,11 @@ def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subj
 
     # pseudocolor plot for ITR - color is ITR, x is end time, y is start time   
     plt.figure()
-    plt.pcolor(epoch_start_times, epoch_end_times, ITRs)
+    plt.pcolor(epoch_end_times, epoch_start_times, ITRs)
     plt.colorbar(label="ITR (bits/sec")
     plt.ylabel("Epoch Start Time (s)")
     plt.xlabel("Epoch End Time (s)")
-    plt.xticks(ticks=np.arange(0,max(epoch_end_times)+1,5))
+    plt.xticks(ticks=np.arange(0,max(epoch_end_times)+1,2.5))
     plt.yticks(ticks=np.arange(0,max(epoch_start_times)+1,5))
     plt.title("Information Transfer Rate")
     plt.tight_layout()
