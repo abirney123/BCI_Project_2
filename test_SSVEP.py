@@ -3,7 +3,9 @@
 """
 Created on Sat Mar 30 13:57:37 2024
 
-@author: Alaina Birney
+@author:
+    Alaina Birney
+    Arthur Dolimier
 
 WRITE TOP LEVEL DESCRIPTION BEFORE SUBMITTING
 """
@@ -32,7 +34,6 @@ subject = 2
 num_choices = 2
 
 # load data
-# subject 1
 data_dict = SSVEP.load_ssvep_data(subject, relative_data_path='./SsvepData/')
 # define fs
 fs = data_dict["fs"]
@@ -68,19 +69,20 @@ ITR_time = SSVEP.get_ITR(accuracy)
 
 # set possible epoch start and end times
 # have start range from 0 to 19 so it is within the bounds of the actual stimulus
-epoch_start_times = np.arange(0,20,.5)
+epoch_start_times = np.arange(0,20,1)
 # have end range from 1 to 20 so it is within the bounds of the actual stimulus
-epoch_end_times = np.arange(1,21,.5)
+epoch_end_times = np.arange(1,21,1)
 
 # calculate figures of merit
-results = SSVEP.test_epochs(data_dict, epoch_start_times, epoch_end_times,
-                               freq_a, freq_b, subject, electrode, num_choices)
+results = SSVEP.test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a, freq_b, subject, electrode, num_choices)
+
+# print(results)
 
 #%% Part D: Plot Results
-SSVEP.generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times,
-                                subject)
+SSVEP.generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subject)
 
-
+# Part E: Predictor Histogram
+SSVEP.plot_predictor_histogram(data_dict, 17, 18, freq_a, freq_b, channels, electrode)
 
 
 

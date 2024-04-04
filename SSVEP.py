@@ -3,7 +3,9 @@
 """
 Created on Sat Mar 30 13:57:35 2024
 
-@author: Alaina Birney
+@author:
+    Alaina Birney
+    Arthur Dolimier
 
 WRITE TOP LEVEL DESCRIPTION BEFORE SUBMITTING
 ONLY WORKS FOR A SSVEP BCI WITH 2 CHOICES
@@ -11,9 +13,13 @@ ONLY WORKS FOR A SSVEP BCI WITH 2 CHOICES
 # import necessary libraries
 import numpy as np
 import math
+import matplotlib as mpl
 from matplotlib import pyplot as plt
+import seaborn as sns
 
-#%% Part A: Generate Predictions
+# mpl.use('TkAgg')
+
+# %% Part A: Generate Predictions
 # load data
 def load_ssvep_data(subject, relative_data_path='./SsvepData/'):
     '''
@@ -46,6 +52,7 @@ def load_ssvep_data(subject, relative_data_path='./SsvepData/'):
     data_dict = np.load(f'{relative_data_path}SSVEP_S{subject}.npz',
                         allow_pickle=True)
     return data_dict
+
 
 # extract epochs with custom start and end times
 def epoch_ssvep_data(data_dict, freq_b, epoch_start_time=0, epoch_end_time=20):
@@ -94,42 +101,38 @@ def epoch_ssvep_data(data_dict, freq_b, epoch_start_time=0, epoch_end_time=20):
         each epoch. True if the light was flashing, false otherwise.
 
     '''
-    
-    #epoch_start_time = int(epoch_start_time) # math.floor(epoch_start_time*10)/10
-    #epoch_end_time = int(epoch_end_time) #math.floor(epoch_end_time*10)/10
-    
+    # unpack data_dict
+    eeg_data = data_dict['eeg'] / 1e-6  # convert to microvolts
+    fs = data_dict['fs']  # sampling frequency
+    event_samples = data_dict['event_samples']  # index to start of events
+    event_types = data_dict['event_types']  # image frequency of during event
 
-    #unpack data_dict
-    eeg_data = data_dict['eeg']/1e-6   # convert to microvolts
-    fs = data_dict['fs']                # sampling frequency
-    event_samples = data_dict['event_samples']    #index to start of events
-    event_types = data_dict['event_types']    # image frequency of during event
-    
     # calculate epoch parameters
     epoch_start_indexes = (event_samples + np.round(epoch_start_time * fs)).astype(int)
     epoch_end_indexes = (event_samples + np.round(epoch_end_time * fs)).astype(int)
-    epoch_durations = int((epoch_end_time - epoch_start_time) * fs) # duration in samples
-    epoch_times = np.arange(epoch_start_time, epoch_end_time, 1/fs)  #seconds
+    epoch_durations = int((epoch_end_time - epoch_start_time) * fs)  # duration in samples
+    epoch_times = np.arange(epoch_start_time, epoch_end_time, 1 / fs)  # seconds
     epoch_count = len(event_samples)
-    
-    #initaialize variables to store epochs and indication of whether b Hz trial
+
+    # initaialize variables to store epochs and indication of whether b Hz trial
     eeg_epochs = np.zeros((epoch_count,
                            eeg_data.shape[0],
-                           epoch_durations )) 
+                           epoch_durations))
     is_trial_bHz = np.zeros(epoch_count, dtype=bool)
-    
+
     # convert freq_b to string matching necessary format
     freq_b = str(freq_b) + "hz"
-    
-    #populate
+
+    # populate
     for event_index in range(epoch_count):
         start_eeg_index = epoch_start_indexes[event_index]
         stop_eeg_index = epoch_end_indexes[event_index]
-        eeg_epochs[event_index,:,:stop_eeg_index-start_eeg_index]  \
-                = eeg_data[:,start_eeg_index:stop_eeg_index]
-        is_trial_bHz[event_index] =   event_types[event_index] == freq_b
-    
+        eeg_epochs[event_index, :, :stop_eeg_index - start_eeg_index] \
+            = eeg_data[:, start_eeg_index:stop_eeg_index]
+        is_trial_bHz[event_index] = event_types[event_index] == freq_b
+
     return eeg_epochs, epoch_times, is_trial_bHz
+
 
 # take Fast Fourier Transform (FFT) of each epoch to examine frequency content
 def get_frequency_spectrum(eeg_epochs, fs):
@@ -164,14 +167,14 @@ def get_frequency_spectrum(eeg_epochs, fs):
         Criterion.
 
     '''
-            
+
     # perform Fourier transform on each channel in each epoch
     eeg_epochs_fft = np.fft.rfft(eeg_epochs, axis=-1)
-    
+
     # get corresponding frequencies
     # d represents sample spacing (inverse of sample rate)
-    fft_frequencies = np.fft.rfftfreq(eeg_epochs.shape[2], d=1/fs)
-    
+    fft_frequencies = np.fft.rfftfreq(eeg_epochs.shape[2], d=1 / fs)
+
     return eeg_epochs_fft, fft_frequencies
 
 
@@ -205,18 +208,19 @@ def find_frequency_indices(fft_frequencies, freq_a, freq_b):
     # find fft indices for frequency a
     # get abs value of difference between all fft frequencies and frequency a
     freq_a_fft_dif = np.abs(fft_frequencies - freq_a)
-    
+
     # add smallest values to variable to store fft index for frequency a
     fft_idx_freq_a = np.argmin(freq_a_fft_dif)
-    
+
     # find fft indices for frequency b
     # get abs value of difference between all fft frequencies and frequency b
     freq_b_fft_dif = np.abs(fft_frequencies - freq_b)
-    
+
     # add smallest values to variable to store fft index for frequency b
     fft_idx_freq_b = np.argmin(freq_b_fft_dif)
-    
+
     return fft_idx_freq_a, fft_idx_freq_b
+
 
 def generate_prediction(eeg_epochs_fft, fft_idx_freq_a, fft_idx_freq_b,
                         electrode, channels, freq_a, freq_b):
@@ -263,29 +267,29 @@ def generate_prediction(eeg_epochs_fft, fft_idx_freq_a, fft_idx_freq_b,
     # while indices correspond to columns of eeg_epochs_fft
     channel_idx = None
     for channel_index, channel_value in enumerate(channels):
-            if channel_value == electrode:
-                channel_idx = channel_index
-                break
-    
+        if channel_value == electrode:
+            channel_idx = channel_index
+            break
+
     if channel_idx is not None:
         # extract amplitudes at the fft indices corresponding to frequency a and 
         # frequency b at the desired electrode by indexing eeg_epochs_fft
         # and taking absolute value
         amplitude_a = np.abs(eeg_epochs_fft[:, channel_idx, fft_idx_freq_a])
         amplitude_b = np.abs(eeg_epochs_fft[:, channel_idx, fft_idx_freq_b])
-        
+
         # find which amplitude is higher by calculating difference between average 
-        #amplitude a and average amplitude b. If positive, amplitude a is higher on 
-        #average. If negative, amplitude b is higher on average. If zero, they are 
-        #equal. amplitude_differences will contain one value for each epoch
+        # amplitude a and average amplitude b. If positive, amplitude a is higher on
+        # average. If negative, amplitude b is higher on average. If zero, they are
+        # equal. amplitude_differences will contain one value for each epoch
         amplitude_differences = amplitude_a - amplitude_b
-        
+
         # initialize list to store predictions
         predictions = []
-        
+
         # set variable to keep track of epochs
         epoch = 1
-        
+
         # loop through amplitude differences, evaluate, and store frequency corresponding
         # to the higher amplitude in the predictions list
         for difference in amplitude_differences:
@@ -296,18 +300,19 @@ def generate_prediction(eeg_epochs_fft, fft_idx_freq_a, fft_idx_freq_b,
             elif difference == 0:
                 predictions.append(None)
                 print("The average amplitudes for the given frequencies are equal, therefore" +
-                  f" a meaningful prediction cannot be made for epoch {epoch}, corresponding "+
-                  f" to index {epoch-1} in the predictions list.")
+                      f" a meaningful prediction cannot be made for epoch {epoch}, corresponding " +
+                      f" to index {epoch - 1} in the predictions list.")
             # increment epoch tracker
             epoch += 1
-            
+
         return predictions
     else:
-        print("The desired electrode could not be found. Please ensure the electrode "+
+        print("The desired electrode could not be found. Please ensure the electrode " +
               "name was spelled correctly and is contained within the list of channels" +
               "for the SSVEP data.")
-        
-#%% Part B: Calculate Accuracy and ITR
+
+
+# %% Part B: Calculate Accuracy and ITR
 def calculate_accuracy(is_trial_bHz, predictions, freq_b):
     """
     A function to calculate the accuracy of the predictions.
@@ -331,26 +336,24 @@ def calculate_accuracy(is_trial_bHz, predictions, freq_b):
 
     """
 
+
     # is_trial_bhz has T/F values, predictions has ints. Create variable to 
     # store predictions as T/F values relative to if bHz for comparison
-    is_prediction_bHz = [] # initialize list to store T/F values
+    is_prediction_bHz = []  # initialize list to store T/F values
     for prediction in predictions:
         if prediction == freq_b:
             is_prediction_bHz.append(True)
-        elif prediction == None: # for cases where difference in amplitude
-        # was 0. User would have been notified prior so no additional messaging
-        # needed.
-            is_prediction_bHz.append(None)
-        elif (prediction != None) & (prediction != freq_b):
+        else:
             is_prediction_bHz.append(False)
-    
+
     # accuracy = number of correct predictions / number of total predictions
     num_correct_predictions = is_prediction_bHz == is_trial_bHz
     accuracy = num_correct_predictions.sum() / len(predictions)
-    
+
     return accuracy
 
-def get_ITR(accuracy, epoch_start_time = 0, epoch_end_time = 20, num_choices = 2):
+
+def get_ITR(accuracy, epoch_start_time=0, epoch_end_time=20, num_choices=2):
     """
     A function to calculate the ITR of the predictions in bits per second.
 
@@ -374,31 +377,32 @@ def get_ITR(accuracy, epoch_start_time = 0, epoch_end_time = 20, num_choices = 2
         The information transfer rate in bits per second.
 
     """
-    
+
     # get trials per second, epoch start and end times are in seconds
     epoch_duration = epoch_end_time - epoch_start_time
-    trials_per_second = 1/epoch_duration
+    trials_per_second = 1 / epoch_duration
     num_choices = 2
-    
+
     # get ITR(trial)
     # ITR(trial) = log2N + P*log2P + (1-P) * log2([1-P]/[N-1])
     # where N is number of trials and P is accuracy
     # handle cases where accuracy is 0 or 1 to avoid invalid values when taking log
     if accuracy == 0:
-        ITR_trial = np.log2(num_choices) + (1-accuracy) * np.log2((1-accuracy)/(num_choices - 1))
-    elif accuracy == 1: 
-        ITR_trial = np.log2(num_choices) + (accuracy) * np.log2(accuracy) 
+        ITR_trial = np.log2(num_choices) + (1 - accuracy) * np.log2((1 - accuracy) / (num_choices - 1))
+    elif accuracy == 1:
+        ITR_trial = np.log2(num_choices) + (accuracy) * np.log2(accuracy)
     else:
-        ITR_trial = np.log2(num_choices) + (accuracy) * np.log2(accuracy) + (1-accuracy) * np.log2((1-accuracy)/(num_choices - 1))
+        ITR_trial = np.log2(num_choices) + (accuracy) * np.log2(accuracy) + (1 - accuracy) * np.log2(
+            (1 - accuracy) / (num_choices - 1))
     # get ITR(time)
     # ITR(time) = ITR(trial) * (trails/ sec)
     ITR_time = ITR_trial * (trials_per_second)
     return ITR_time
 
 
-#%% Part C: Loop Through Epoch Limits
+# %% Part C: Loop Through Epoch Limits
 def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
-                freq_b, subject, electrode, num_choices = 2):
+                freq_b, subject, electrode, num_choices=2):
     """
     A function to test various epoch start and end times for SSVEP data. For 
     each valid combination (a valid combination occurs when the epoch end time
@@ -450,16 +454,12 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
     """
     # initialize list to store results
     results = {}
-    
+
     # loop through start and end times
     for start_time in epoch_start_times:
         for end_time in epoch_end_times:
             # don't evaluate cases where start time > end time
             if end_time > start_time:
-
-                # skip if not whole number
-                #if (start_time % 1 != 0 or end_time % 1 != 0):
-                    #continue
 
                 # epoch data
                 eeg_epochs, epoch_times, is_trial_bHz = epoch_ssvep_data(data_dict,
@@ -467,38 +467,37 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
                                                                          epoch_start_time=start_time,
                                                                          epoch_end_time=end_time)
                 # calculate FFT
-                fs = data_dict["fs"] # get fs to use as input for getting frequency spectrum
-    
+                fs = data_dict["fs"]  # get fs to use as input for getting frequency spectrum
+
                 # Skip due to time interval being too small
                 if (eeg_epochs.size == 0):
                     continue
 
                 eeg_epochs_fft, fft_frequencies = get_frequency_spectrum(eeg_epochs, fs)
-                
+
                 # get frequency indices for prediction generation
                 fft_idx_freq_a, fft_idx_freq_b = find_frequency_indices(fft_frequencies,
                                                                         freq_a, freq_b)
                 # generate predictions
-                channels = data_dict["channels"] # get channels to use as input for predictions
+                channels = data_dict["channels"]  # get channels to use as input for predictions
                 predictions = generate_prediction(eeg_epochs_fft, fft_idx_freq_a,
                                                   fft_idx_freq_b, electrode,
                                                   channels, freq_a, freq_b)
-                # calculate accuracy
+
                 accuracy = calculate_accuracy(is_trial_bHz, predictions, freq_b)
-                
-                
+
                 # calculate ITR
-                ITR = get_ITR(accuracy, epoch_start_time = start_time,
-                              epoch_end_time = end_time, num_choices = num_choices)
-                
+                ITR = get_ITR(accuracy, epoch_start_time=start_time,
+                              epoch_end_time=end_time, num_choices=num_choices)
+
                 # save info to dictionary
-                results[(start_time, end_time)] = {"accuracy" : accuracy,
-                                                   "ITR" : ITR}
-                
-                
+                results[(start_time, end_time)] = {"accuracy": accuracy,
+                                                   "ITR": ITR}
+
     return results
-                
-#%% Part D: Plot Results
+
+
+# %% Part D: Plot Results
 def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subject):
     """
     A function to generate and save pseudocolor plots to evaluate the accuracies 
@@ -536,7 +535,7 @@ def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subj
     accuracies = np.zeros((len(epoch_start_times), len(epoch_end_times)))
     # initialize list to store all ITRs
     ITRs = np.zeros((len(epoch_start_times), len(epoch_end_times)))
-    
+
     # loop through keys, get accuracy and ITR for each start, end pair
     for start_idx, start_time in enumerate(epoch_start_times):
         for end_idx, end_time in enumerate(epoch_end_times):
@@ -546,31 +545,30 @@ def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subj
                 ITRs[start_idx, end_idx] = results[key]["ITR"]
     # convert accuracies to percentages
     accuracies = accuracies * 100
-    
+
     # pseudocolor plot for accuracy - color is accuracy, x is end time, y is start time   
     plt.figure()
-    plt.pcolor(epoch_start_times, epoch_end_times, accuracies)
+    plt.pcolor(epoch_end_times, epoch_start_times, accuracies)
     plt.colorbar(label="% correct")
     plt.ylabel("Epoch Start Time (s)")
     plt.xlabel("Epoch End Time (s)")
-    plt.xticks(ticks=np.arange(0,max(epoch_end_times)+1,5))
-    plt.yticks(ticks=np.arange(0,max(epoch_start_times)+1,5))
+    plt.xticks(ticks=np.arange(0, max(epoch_end_times) + 1, 5))
+    plt.yticks(ticks=np.arange(0, max(epoch_start_times) + 1, 2.5))
     plt.title("Accuracy")
     plt.tight_layout()
     plt.show()
     # save
     filename = f"Accuracy_pseudocolor_s{subject}.png"
     plt.savefig(filename)
-    
 
     # pseudocolor plot for ITR - color is ITR, x is end time, y is start time   
     plt.figure()
-    plt.pcolor(epoch_start_times, epoch_end_times, ITRs)
+    plt.pcolor(epoch_end_times, epoch_start_times, ITRs)
     plt.colorbar(label="ITR (bits/sec")
     plt.ylabel("Epoch Start Time (s)")
     plt.xlabel("Epoch End Time (s)")
-    plt.xticks(ticks=np.arange(0,max(epoch_end_times)+1,5))
-    plt.yticks(ticks=np.arange(0,max(epoch_start_times)+1,5))
+    plt.xticks(ticks=np.arange(0, max(epoch_end_times) + 1, 5))
+    plt.yticks(ticks=np.arange(0, max(epoch_start_times) + 1, 2.5))
     plt.title("Information Transfer Rate")
     plt.tight_layout()
     plt.show()
@@ -578,3 +576,76 @@ def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subj
     filename = f"ITR_pseudocolor_s{subject}.png"
     plt.savefig(filename)
 
+
+def plot_predictor_histogram(data_dict, epoch_start_time, epoch_end_time, freq_a, freq_b, channels, electrode):
+    """
+    Plot a Kernel Density Estimate (KDE) histogram of the predictor variable for epochs within specified start and end times.
+
+    This function calculates the predictor variable, defined as the difference in amplitudes at two specified frequencies,
+    for each epoch of SSVEP data for a specific electrode. It then plots a KDE histogram of these predictor variables,
+    separating the data into two distributions based on whether the trial was at frequency b (labeled 'Actually Present')
+    or not (labeled 'Actually Absent'). Medians of both distributions are also displayed for reference.
+
+    Parameters:
+    data_dict : numpy.lib.npyio.NpzFile of size F where F represents the number of
+    arrays within this object. Required.
+        This object behaves similarly to a dictionary and can be accessed using
+        keys. Contains raw, unfiltered information about the dataset. Each
+        array within the dictionary holds information corresponding to a
+        different field. In our case, F=6 and corresponds to: eeg data in volts
+        ("EEG"), channels ("channels"), sampling frequency in Hz ("fs"), the
+        sample when each event occured ("event_samples"), the event durations
+        ("event_durations"), and the event types ("event_types").
+    epoch_start_time : float
+        The start time in seconds for the epoch window within which the data will be analyzed.
+    epoch_end_time : float
+        The end time in seconds for the epoch window within which the data will be analyzed.
+    freq_a : Int
+        One of the frequencies for the flashing shown in the SSVEP experiment.
+    freq_b : Int
+        The other frequency of the flashing shown in the SSVEP experiment.
+    channels : Array of str. Size (C,) where C is the number of channels for
+    electrode : str, The name of the electrode for which the predictor variable will be calculated and plotted.
+
+
+    """
+    # Find the index of the desired electrode
+    try:
+        channel_idx = list(channels).index(electrode)
+    except ValueError:
+        print("The specified electrode was not found in the channel list.")
+        return
+
+    eeg_epochs, epoch_times, is_trial_bHz = epoch_ssvep_data(data_dict,
+                                                             freq_b,
+                                                             epoch_start_time=epoch_start_time,
+                                                             epoch_end_time=epoch_end_time)
+
+    fs = data_dict["fs"]  # get fs to use as input for getting frequency spectrum
+
+    eeg_epochs_fft, fft_frequencies = get_frequency_spectrum(eeg_epochs, fs)
+
+    # get frequency indices for prediction generation
+    fft_idx_freq_a, fft_idx_freq_b = find_frequency_indices(fft_frequencies,
+                                                            freq_a, freq_b)
+
+    # Calculate the predictor variable for each epoch
+    amplitude_differences = np.abs(eeg_epochs_fft[:, channel_idx, fft_idx_freq_a]) - \
+                            np.abs(eeg_epochs_fft[:, channel_idx, fft_idx_freq_b])
+
+    # Separate the predictor variables by trial type
+    predictor_trial_b = amplitude_differences[is_trial_bHz]
+    predictor_trial_not_b = amplitude_differences[~is_trial_bHz]
+
+    # Plot the KDEs for the two trial types
+    plt.figure()
+    sns.kdeplot(predictor_trial_not_b, fill=True, color="orange", label='Actually Absent')
+    sns.kdeplot(predictor_trial_b, fill=True, color="blue", label='Actually Present')
+    plt.axvline(np.median(predictor_trial_not_b), color='orange', linestyle='dashed', linewidth=1,
+                label='Median Absent')
+    plt.axvline(np.median(predictor_trial_b), color='blue', linestyle='dotted', linewidth=1, label='Median Present')
+    plt.legend(loc='upper right')
+    plt.xlabel('Predictor Variable')
+    plt.ylabel('Density')
+    plt.title('Predictor Histogram')
+    plt.show()
