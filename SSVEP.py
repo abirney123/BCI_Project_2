@@ -7,8 +7,14 @@ Created on Sat Mar 30 13:57:35 2024
     Alaina Birney
     Arthur Dolimier
 
-WRITE TOP LEVEL DESCRIPTION BEFORE SUBMITTING
-ONLY WORKS FOR A SSVEP BCI WITH 2 CHOICES
+A python module to load SSVEP data, separate it into epochs for which the start
+and end times can be adjusted, transfer EEG data from the time to the frequency 
+domain, find the elements of the data in the frequency domain that represent the 
+amplitudes of oscillations at two frequencies presented in the SSVEP experiment,
+predict the frequency corresponding to the stimulus that the subject was paying
+attention to, calculate the accuracy and information transfer rate (ITR) of 
+those predictions and create corresponding pseudocolor plots, and plot a Kernel
+Density Estimate (KDE) predictor histogram of the predictor variables.
 """
 # import necessary libraries
 import numpy as np
@@ -498,7 +504,8 @@ def test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a,
 
 
 # %% Part D: Plot Results
-def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subject):
+def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times,
+                               subject, electrode):
     """
     A function to generate and save pseudocolor plots to evaluate the accuracies 
     and ITRs at various epoch limits.
@@ -521,9 +528,13 @@ def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subj
         End times (in seconds) to test for epoching the data.
     subject : Int
         The number of the subject for whom data will be plotted. This is only
-        used for plot labels, but must match the subject number fed to other
+        used for the plot title, but must match the subject number fed to other
         functions for loading and epoching data to ensure the plot title is
         accurate.
+    electrode : Str
+        The desired electrode. This is only used for the plot title, but must
+        match the electrode fed to other functions for loading and epoching data 
+        to ensure the plot title is accurate.
 
     Returns
     -------
@@ -546,39 +557,41 @@ def generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subj
 
     # convert accuracies to percentages
     accuracies = accuracies * 100
-
+    
+    # create plots
+    
+    fig, axs = plt.subplots(1,2, figsize=(10,5))
+    fig.suptitle(f"SSVEP Subject {subject}, channel {electrode}")
     # pseudocolor plot for accuracy - color is accuracy, x is end time, y is start time   
-    plt.figure()
-    plt.pcolor(epoch_end_times, epoch_start_times, accuracies)
-    plt.colorbar(label="% correct")
-    plt.ylabel("Epoch Start Time (s)")
-    plt.xlabel("Epoch End Time (s)")
-    plt.xticks(ticks=np.arange(0, max(epoch_end_times)+1,5))
-    plt.yticks(ticks=np.arange(0, max(epoch_start_times)+1,2.5))
-    plt.title("Accuracy")
-    plt.tight_layout()
-    plt.show()
-    # save
-    filename = f"Accuracy_pseudocolor_s{subject}.png"
-    plt.savefig(filename)
+
+    accuracy_plot = axs[0].pcolor(epoch_end_times, epoch_start_times, accuracies)
+    fig.colorbar(accuracy_plot, ax=axs[0],label="% correct")
+    axs[0].set_ylabel("Epoch Start Time (s)")
+    axs[0].set_xlabel("Epoch End Time (s)")
+    axs[0].set_xticks(ticks=np.arange(0, max(epoch_end_times)+1,5))
+    axs[0].set_yticks(ticks=np.arange(0, max(epoch_start_times)+1,2.5))
+    axs[0].set_title("Accuracy")
+
 
     # pseudocolor plot for ITR - color is ITR, x is end time, y is start time   
-    plt.figure()
-    plt.pcolor(epoch_end_times, epoch_start_times, ITRs)
-    plt.colorbar(label="ITR (bits/sec")
-    plt.ylabel("Epoch Start Time (s)")
-    plt.xlabel("Epoch End Time (s)")
-    plt.xticks(ticks=np.arange(0, max(epoch_end_times) + 1, 5))
-    plt.yticks(ticks=np.arange(0, max(epoch_start_times) + 1, 2.5))
-    plt.title("Information Transfer Rate")
+    ITR_plot = axs[1].pcolor(epoch_end_times, epoch_start_times, ITRs)
+    fig.colorbar(ITR_plot, ax=axs[1], label="ITR (bits/sec")
+    axs[1].set_ylabel("Epoch Start Time (s)")
+    axs[1].set_xlabel("Epoch End Time (s)")
+    axs[1].set_xticks(ticks=np.arange(0, max(epoch_end_times) + 1, 5))
+    axs[1].set_yticks(ticks=np.arange(0, max(epoch_start_times) + 1, 2.5))
+    axs[1].set_title("Information Transfer Rate")
+    
+    # display
     plt.tight_layout()
     plt.show()
+    
     # save
-    filename = f"ITR_pseudocolor_s{subject}.png"
+    filename = f"SSVEP_s{subject}_channel_{electrode}.png"
     plt.savefig(filename)
 
 
-def plot_predictor_histogram(data_dict, epoch_start_time, epoch_end_time, freq_a, freq_b, channels, electrode):
+def plot_predictor_histogram(data_dict, epoch_start_time, epoch_end_time, freq_a, freq_b, channels, electrode, subject):
     """
     Plot a Kernel Density Estimate (KDE) histogram of the predictor variable for epochs within specified start and end times.
 
@@ -605,9 +618,11 @@ def plot_predictor_histogram(data_dict, epoch_start_time, epoch_end_time, freq_a
         One of the frequencies for the flashing shown in the SSVEP experiment.
     freq_b : Int
         The other frequency of the flashing shown in the SSVEP experiment.
-    channels : Array of str. Size (C,) where C is the number of channels for
+    channels : Array of str. Size (C,) where C is the number of channels for which we have data.
     electrode : str, The name of the electrode for which the predictor variable will be calculated and plotted.
-
+    subject : Int
+        The number of the subject for whom data will be plotted. This is just used
+        in the plot title.
 
     """
     # Find the index of the desired electrode
@@ -648,5 +663,9 @@ def plot_predictor_histogram(data_dict, epoch_start_time, epoch_end_time, freq_a
     plt.legend(loc='upper right')
     plt.xlabel('Predictor Variable')
     plt.ylabel('Density')
-    plt.title('Predictor Histogram')
+    plt.title(f'Predictor Histogram Subject {subject}, channel {electrode}')
     plt.show()
+    
+    # save
+    filename = f"Predictor_histogram_s{subject}_channel_{electrode}.png"
+    plt.savefig(filename)

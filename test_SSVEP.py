@@ -7,7 +7,13 @@ Created on Sat Mar 30 13:57:37 2024
     Alaina Birney
     Arthur Dolimier
 
-WRITE TOP LEVEL DESCRIPTION BEFORE SUBMITTING
+A python module designed to aid in investigation of which epoch start and end
+times are best to use for each subject in an SSVEP experiment as well as which 
+threshold should be used for predictions regarding which stimulus the subject
+was focused on. This module is suitable for use to analyze data from an SSVEP 
+experiment with two choices. These tasks are accomplished by calling various
+functions from the SSVEP module and gathering results for various epoch start
+and end times.
 """
 # import module
 import SSVEP as SSVEP
@@ -30,7 +36,7 @@ electrode = "Oz" # Oz was chosen for this SSVEP experiment because it is located
 # subject
 subject = 2
 
-# number of choices in SSVEP experiment
+# number of choices in SSVEP experiment- must be 2
 num_choices = 2
 
 # load data
@@ -74,15 +80,17 @@ epoch_start_times = np.arange(0,20,1)
 epoch_end_times = np.arange(1,21,1)
 
 # calculate figures of merit
-results = SSVEP.test_epochs(data_dict, epoch_start_times, epoch_end_times, freq_a, freq_b, subject, electrode, num_choices)
+results = SSVEP.test_epochs(data_dict, epoch_start_times, epoch_end_times,
+                            freq_a, freq_b, subject, electrode, num_choices)
 
 # print(results)
 
 #%% Part D: Plot Results
-SSVEP.generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times, subject)
+SSVEP.generate_pseudocolor_plots(results, epoch_start_times, epoch_end_times,
+                                 subject, electrode)
 
 # Part E: Predictor Histogram
-SSVEP.plot_predictor_histogram(data_dict, 17, 18, freq_a, freq_b, channels, electrode)
+SSVEP.plot_predictor_histogram(data_dict, 17, 18, freq_a, freq_b, channels, electrode, subject)
 
 
 
